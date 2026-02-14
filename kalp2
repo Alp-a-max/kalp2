@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seni Seviyorum - Valentine's Neon Heart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-red: #ff3131;
+            --neon-glow: #ff0000;
+            --bulb-glass: rgba(255, 255, 255, 0.1);
+            --filament-off: #331111;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Dancing Script', cursive;
+        }
+
+        .universe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #1a0000 0%, #050000 100%);
+            z-index: 0;
+        }
+
+        #canvas-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 2s ease-in;
+        }
+
+        .heart-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+        }
+
+        /* REALISTIC BULB STYLING */
+        .bulb-wrapper {
+            position: absolute;
+            width: 20px;
+            height: 35px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transform: scale(0);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .bulb-wrapper.visible {
+            opacity: 1;
+            transform: scale(1) rotate(var(--rot));
+        }
+
+        .bulb-glass {
+            width: 18px;
+            height: 22px;
+            background: var(--bulb-glass);
+            border-radius: 50% 50% 40% 40%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.1);
+        }
+
+        .filament {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 8px;
+            background: var(--filament-off);
+            border-radius: 2px;
+            transition: all 0.1s;
+        }
+
+        .bulb-base {
+            width: 8px;
+            height: 6px;
+            background: #444;
+            background: linear-gradient(to right, #222, #666, #222);
+            border-radius: 0 0 2px 2px;
+            margin-top: -1px;
+        }
+
+        /* LIT STATES */
+        .bulb-wrapper.lit .filament {
+            background: #fff;
+            box-shadow: 0 0 10px #ff3131, 0 0 20px #ff0000;
+        }
+
+        .bulb-wrapper.lit .bulb-glass {
+            background: rgba(255, 50, 50, 0.2);
+            border-color: rgba(255, 100, 100, 0.4);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        }
+
+        .bulb-wrapper.super-lit .filament {
+            background: #fff;
+            box-shadow: 0 0 15px #fff, 0 0 30px #ff0000, 0 0 60px #ff0000;
+        }
+
+        .bulb-wrapper.super-lit .bulb-glass {
+            background: rgba(255, 200, 200, 0.3);
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.8), 0 0 50px rgba(255, 0, 0, 0.4);
+        }
+
+        .romantic-text {
+            color: #fff;
+            font-size: 4rem;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 2.5s cubic-bezier(0.19, 1, 0.22, 1);
+            text-shadow: 0 0 10px #000;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .romantic-text.reveal {
+            opacity: 1;
+            transform: translateY(0);
+            text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000;
+        }
+
+        .glitch-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #ff00000a;
+            pointer-events: none;
+            display: none;
+            z-index: 4;
+        }
+
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 30%, rgba(0, 0, 0, 0.9) 100%);
+            pointer-events: none;
+            z-index: 5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="universe"></div>
+    <div class="vignette"></div>
+    <canvas id="canvas-bg"></canvas>
+    <div class="glitch-overlay" id="glitch"></div>
+
+    <div class="heart-container" id="heart-container">
+        <div class="romantic-text" id="romantic-text">
+            Seni Seviyorum
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('heart-container');
+        const text = document.getElementById('romantic-text');
+        const canvas = document.getElementById('canvas-bg');
+        const glitch = document.getElementById('glitch');
+        const ctx = canvas.getContext('2d');
+
+        let bulbs = [];
+        const NUM_BULBS = 55; // Reduced to increase spacing between bulbs
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function createHeart() {
+            for (let i = 0; i < NUM_BULBS; i++) {
+                const t = (i / NUM_BULBS) * Math.PI * 2;
+
+                // Parametric heart
+                const r = 16;
+                let x = 16 * Math.pow(Math.sin(t), 3);
+                let y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+
+                const scale = 17;
+                const posX = 300 + x * scale;
+                const posY = 300 + y * scale;
+
+                // Calculate tangent for rotation (pointing outward)
+                // Derivative of heart formula for rotation
+                const dx = 48 * Math.pow(Math.sin(t), 2) * Math.cos(t);
+                const dy = 13 * Math.sin(t) - 10 * Math.sin(2 * t) - 6 * Math.sin(3 * t) - 4 * Math.sin(4 * t);
+                const angle = Math.atan2(dy, dx) + Math.PI / 2;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'bulb-wrapper';
+                wrapper.style.left = `${posX - 10}px`;
+                wrapper.style.top = `${posY - 17}px`;
+                wrapper.style.setProperty('--rot', `${angle}rad`);
+
+                wrapper.innerHTML = `
+                    <div class="bulb-glass">
+                        <div class="filament"></div>
+                    </div>
+                    <div class="bulb-base"></div>
+                `;
+
+                container.appendChild(wrapper);
+                bulbs.push(wrapper);
+            }
+        }
+
+        const particles = [];
+        class Particle {
+            constructor(isExplosion = false, x, y) {
+                this.isExplosion = isExplosion;
+                this.reset(x, y);
+            }
+            reset(x, y) {
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                const speedScale = this.isExplosion ? 10 : 2;
+                this.vx = (Math.random() - 0.5) * speedScale;
+                this.vy = (Math.random() - 0.5) * speedScale;
+                this.size = Math.random() * (this.isExplosion ? 4 : 2) + 1;
+                this.alpha = 0;
+                this.targetAlpha = Math.random() * 0.8 + 0.2;
+                this.life = this.isExplosion ? Math.random() * 60 + 30 : Infinity;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.alpha < this.targetAlpha) this.alpha += 0.02;
+                if (this.isExplosion) {
+                    this.life--;
+                    this.alpha -= 0.005;
+                    this.vx *= 0.97;
+                    this.vy *= 0.97;
+                }
+                if (!this.isExplosion && (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height)) {
+                    this.reset();
+                }
+            }
+            draw() {
+                if (this.alpha <= 0) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, ${this.isExplosion ? '180' : '50'}, ${this.isExplosion ? '180' : '50'}, ${this.alpha})`;
+                ctx.fill();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'red';
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].isExplosion && particles[i].life <= 0) particles.splice(i, 1);
+            }
+            requestAnimationFrame(animate);
+        }
+
+        async function start() {
+            createHeart();
+
+            // Phase 0: Drawing
+            for (const b of bulbs) {
+                b.classList.add('visible');
+                await new Promise(r => setTimeout(r, 20));
+            }
+
+            await new Promise(r => setTimeout(r, 600));
+
+            // Phase 1: Flicker
+            const flickerEnd = Date.now() + 3000;
+            const interval = setInterval(() => {
+                glitch.style.display = Math.random() > 0.96 ? 'block' : 'none';
+                bulbs.forEach(b => {
+                    if (Math.random() > 0.7) b.classList.add('lit');
+                    else b.classList.remove('lit');
+                });
+                if (Date.now() > flickerEnd) {
+                    clearInterval(interval);
+                    glitch.style.display = 'none';
+                    bulbs.forEach(b => b.classList.remove('lit'));
+                    finish();
+                }
+            }, 70);
+
+            async function finish() {
+                await new Promise(r => setTimeout(r, 600));
+                bulbs.forEach(b => {
+                    b.classList.add('lit');
+                    b.classList.add('super-lit');
+                });
+                text.classList.add('reveal');
+                for (let i = 0; i < 150; i++) particles.push(new Particle(true, window.innerWidth / 2, window.innerHeight / 2));
+                for (let i = 0; i < 60; i++) particles.push(new Particle());
+                canvas.style.opacity = 1;
+                animate();
+            }
+        }
+
+        window.onload = start;
+    </script>
+</body>
+
+</html>
